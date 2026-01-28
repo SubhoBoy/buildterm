@@ -1,0 +1,174 @@
+\documentclass[conference]{IEEEtran}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{booktabs}
+\usepackage{url}
+\usepackage{circuitikz}
+\lstset{
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{blue}\bfseries,
+  commentstyle=\color{green!40!black},
+  stringstyle=\color{red},
+  numbers=left,                     % keep numbers
+  numberstyle=\scriptsize\ttfamily, % more readable numbers
+  numbersep=8pt,                    % add spacing from code
+  xleftmargin=1.5em,                % indent code so numbers don’t overlap
+  frame=single,
+  breaklines=true,
+  breakatwhitespace=true,
+  tabsize=2,
+  showstringspaces=false,
+  captionpos=b,
+  keepspaces=true                   % preserve spacing properly
+}
+
+\title{Building native Android apps locally using Python}
+
+\author{
+\IEEEauthorblockN{Subhodeep Chakraborty}
+\IEEEauthorblockA{
+Department of Electrical Engineering\\
+IIT Hyderabad\\
+Email: ee25btech11055@iith.ac.in}
+}
+
+\begin{document}
+
+\maketitle
+
+% \begin{abstract}
+% This paper presents the implementation of scientific calculator functions such as trigonometric, logarithmic, exponential, power, factorial, and expression parsing using the C programming language on a microcontroller platform. Various numerical algorithms such as Runge--Kutta (RK4), series expansions, iterative methods, and parsing algorithms have been employed. Each function is discussed with its algorithmic basis followed by its C implementation.
+% \end{abstract}
+%
+% \begin{IEEEkeywords}
+% Scientific Calculator, Microcontroller, Runge--Kutta Method, Quake III Algorithm, Shunting Yard Algorithm, C Programming
+% \end{IEEEkeywords}
+
+\section{Motivation}
+
+Today, an Android phone is functionally equivalent to a development workstation for most purposes. There are very few cases where there is not a way to achieve the required goals using a mobile device.\\
+Despite this, traditionally the \textit{building} of native Android apps itself has been restricted to the desktop. This is due to the large SDK and NDK sizes, and also long build times. Some recent developments, however, have made change possible.\\
+This guide aims to showcase some work done in the open source community in the past few months that now allows for the development, building and running of native apps directly from the phone itself, without the need of any other device.
+
+\section{Setup}
+\begin{enumerate}
+ \item Follow the instructions in the follwing repo to setup proot-distro and termux. Following instructions are to be executed inside proot-distro.
+\fbox{\parbox{\linewidth}{
+\url{https://github.com/gadepall/fwc-1}
+}}\\[1pt]
+\item Install the builder package and dependencies using pip (Python version 3.8 to 3.10)
+\fbox{\parbox{\linewidth}{
+pip install python-for-android Cython==3.0.0
+}}\\[1pt]
+\item Install dependencies. \\
+\fbox{\parbox{\linewidth}{
+apt-get update\\
+apt-get install -y ant autoconf automake ccache cmake g++ gcc git lbzip2 libffi-dev libltdl-dev libtool libssl-dev make openjdk-17-jdk patch pkg-config python3 python3-dev python3-pip python3-venv sudo unzip wget zip
+}} \\[1pt]
+\item The normal Android SDK and NDK provided by Google cater to Linux users, and does not work correctly on Android.
+\item Download the NDK patched for Termux use by users codehasan, Party233 and Lzhiyong on Github:
+\fbox{\parbox{\linewidth}{
+wget \url{https://github.com/codehasan/dex2c/releases/download/ollvm-termux/android-ndk-r25c-ollvm-aarch64.tar.xz}
+}} \\[1pt]
+\item For the SDK, go to the following link and scroll down to ``Command line tools only'' and download the Linux version.
+\fbox{\parbox{\linewidth}{
+\url{https://developer.android.com/studio}
+}} \\[1pt]
+\item Extract both the files and place in appropriate directory structure (Assuming both files are in correct direction. Replace XX with correct version in file name).
+\begin{lstlisting}[language=bash,breakatwhitespace=false]
+tar -xf android-ndk-r25c-ollvm-aarch64.tar.xz
+mv XX.XX android-ndk-r25c
+ln -s android-ndk-r25c/toolchains/llvm/prebuilt/linux-aarch64 android-ndk-r25c/toolchains/llvm/prebuilt/linux-x86_64
+mkdir sdk
+unzip commandlinetools-linux-XX_latest.zip
+mv cmdline-tools sdk/tools
+\end{lstlisting}
+\begin{lstlisting}[frame=none]
+\end{lstlisting}
+\item Download env.sh from SubhoBoy/buildterm Github repo and run it.
+\begin{lstlisting}[language=bash,breakatwhitespace=false]
+wget https://raw.githubusercontent.com/SubhoBoy/buildterm/refs/heads/main/env.sh
+chmod +x env.sh
+source ./env.sh
+\end{lstlisting}
+\begin{lstlisting}[frame=none]
+\end{lstlisting}
+\item Now we install the full SDK. We use Android API level 27 for compatibility with the older Python version we are using. Use the list command to find latest build tools version and install it.
+\begin{lstlisting}[language=bash]
+cd sdk
+sdkmanager "platforms;android-27"
+sdkmanager --list | grep build-tools
+sdkmanager "build-tools;XX.XX.XX"
+cd ..
+\end{lstlisting}
+\begin{lstlisting}[frame=none]
+\end{lstlisting}
+\item Finally, we need to set up the Android Asset Packaging Tool for use on Termux:
+\begin{lstlisting}[language=bash,breakatwhitespace=false]
+ cd ~
+ wget https://github.com/rendiix/termux-aapt/raw/main/prebuilt-binary-android-12%2B/arm64/aapt2
+ chmod +x aapt2
+ mkdir -p ~/.gradle
+ echo "android.aapt2FromMavenOverride=$(readlink -f ~/aapt2)" >> ~/.gradle/gradle.properties
+ cd -
+\end{lstlisting}
+\begin{lstlisting}[frame=none]
+\end{lstlisting}
+\end{enumerate}
+\section{Compilation}
+\begin{enumerate}
+ \item The syntax for the compilation command is as follows:
+ \begin{lstlisting}[language=bash]
+  p4a apk --private $HOME/code/myapp --package=org.example.myapp --name "My application" --version 0.1 --bootstrap=sdl2 --requirements=python3,kivy,libffi --arch=arm64-v8a
+ \end{lstlisting}
+\begin{lstlisting}[frame=none]
+\end{lstlisting}
+Here, \verb|--private| is the directory containing the app's \verb|main.py|. \verb|--requirements| should include all the packages needed by the app.
+\item Navigate to your app's folder. For example, using calculator repo for EE1003:
+\begin{lstlisting}[language=bash,breakatwhitespace=false]
+ git clone https://github.com/SubhoBoy/calculator
+ cd calculator
+\end{lstlisting}
+\begin{lstlisting}[frame=none]
+\end{lstlisting}
+\item Run the above command as per your app's details. For example:
+\begin{lstlisting}[language=bash]
+ p4a apk --private /root/calculator/android --package=org.subhoboy.calci --name "Calci" --version 0.1 --bootstrap=sdl2 --requirements=python3,kivy,libffi --arch=arm64-v8a
+\end{lstlisting}
+On first run, this command will take roughly 10-15 minutes to run with a decent internet connection. It will result in an error regarding \verb|libffi.so|.
+\begin{lstlisting}[frame=none]
+\end{lstlisting}
+
+\item Find location of system \verb|libffi.so|:
+\begin{lstlisting}[language=bash]
+ find / -name libffi.so
+\end{lstlisting}
+\begin{lstlisting}[frame=none]
+\end{lstlisting}
+\item Copy system libffi.so to our build folder.
+\begin{lstlisting}[language=bash,breakatwhitespace=false]
+ cp /usr/lib/aarch64-linux-gnu/libffi.so $HOME/.local/share/python-for-android/build/other_builds/libffi/arm64-v8a__ndk_target_21/libffi/.libs/libffi.so
+\end{lstlisting}
+(Edit paths for your system, if needed)
+\begin{lstlisting}[frame=none]
+\end{lstlisting}
+\item Run the command given in step 2 again. This time, it should finish compiling successfully in under a minute. You will find a \verb|.apk| file generated in the current directory.
+\begin{lstlisting}[language=bash]
+ mv unnamed_dist_2-debug-0.1.apk /sdcard/calci.apk
+\end{lstlisting}
+This \verb|.apk| file may be installed on the device. Note that due to being compiled for an older version of Android and being unsigned, it may be flagged as untrusted by Google Play; this can be safely bypassed.
+\begin{lstlisting}[frame=none]
+\end{lstlisting}
+\end{enumerate}
+
+\section{Acknowledgements}
+The preparation of this guide was made possible only by the community of open source developers on Github. Specifically, it uses code patched by Github users codehasan, Party233, Lzhiyong, rendiix and the kivy team. \par I am grateful to Dr. G.V.V. Sharma for giving me the motivation to work on this niche but high-potential field. Finally, I would like to thank my friend Mr. Vivek K. Kumar for his constant support through the research and debugging phase.
+
+\end{document}
+
+
