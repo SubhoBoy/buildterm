@@ -101,9 +101,9 @@ source ./env.sh
 \item Now we install the full SDK. We use Android API level 27 for compatibility with the older Python version we are using. Use the list command to find latest build tools version and install it.
 \begin{lstlisting}[language=bash]
 cd sdk
-sdkmanager "platforms;android-27"
-sdkmanager --list | grep build-tools
-sdkmanager "build-tools;XX.XX.XX"
+sdkmanager --sdk_root=. "platforms;android-27"
+sdkmanager --sdk_root=. --list | grep build-tools
+sdkmanager --sdk_root=. "build-tools;XX.XX.XX"
 cd ..
 \end{lstlisting}
 \begin{lstlisting}[frame=none]
@@ -114,10 +114,14 @@ cd ..
  wget https://github.com/rendiix/termux-aapt/raw/main/prebuilt-binary-android-12%2B/arm64/aapt2
  chmod +x aapt2
  mkdir -p ~/.gradle
- echo "android.aapt2FromMavenOverride=$(readlink -f ~/aapt2)" >> ~/.gradle/gradle.properties
+ touch ~/.gradle/gradle.properties
  cd -
 \end{lstlisting}
 \begin{lstlisting}[frame=none]
+\end{lstlisting}
+Add the following line inside to \verb|~/.gradle/gradle.proprties|
+\begin{lstlisting}[breakatwhitespace=false]
+ android.aapt2FromMavenOverride=$(readlink -f ~/aapt2)
 \end{lstlisting}
 \end{enumerate}
 \section{Compilation}
